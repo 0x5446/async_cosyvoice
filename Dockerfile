@@ -38,4 +38,4 @@ RUN mkdir -p /workspace/CosyVoice/pretrained_models/CosyVoice2-0.5B && \
 
 # 设置最终运行目录并生成 gRPC 代码及启动服务
 WORKDIR /workspace/CosyVoice/async_cosyvoice/runtime/async_grpc
-CMD bash -c "python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cosyvoice.proto && python server.py --load_jit --load_trt --fp16"
+CMD ["bash", "-c", "python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cosyvoice.proto && python server.py --load_jit --load_trt --fp16"]
