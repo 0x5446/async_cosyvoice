@@ -37,7 +37,7 @@ fi
 
 # ========== 3. 安装 Python 依赖 ==========
 echo "🐍 安装 pynini..."
-pip install pynini==2.1.5
+pip install Cython pynini==2.1.5
 
 echo "📥 处理 async_cosyvoice 子项目..."
 ASYNC_DIR="$COSY_DIR/async_cosyvoice"
