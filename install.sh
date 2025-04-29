@@ -14,7 +14,7 @@ mkdir -p "$WORKSPACE"
 # ========== 1. 安装系统依赖 ==========
 echo "📦 安装系统依赖..."
 apt-get update -y
-apt-get install -y git unzip git-lfs sox libsox-dev build-essential python3-pip
+apt-get install -y git unzip git-lfs sox libsox-dev build-essential python3-pip libfst-dev
 
 # 初始化 git lfs
 git lfs install || true
