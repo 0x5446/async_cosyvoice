@@ -14,12 +14,40 @@ mkdir -p "$WORKSPACE"
 # ========== 1. 安装系统依赖 ==========
 echo "📦 安装系统依赖..."
 apt-get update -y
-apt-get install -y git unzip git-lfs sox libsox-dev build-essential python3-pip libfst-dev
+apt-get install -y git unzip git-lfs sox libsox-dev build-essential wget
 
 # 初始化 git lfs
 git lfs install || true
 
-# ========== 2. 克隆主项目 ==========
+# ========== 2. 安装 Miniconda3 ==========
+echo "📦 安装 Miniconda3..."
+MINICONDA_DIR="$WORKSPACE/miniconda3"
+if [ -d "$MINICONDA_DIR" ]; then
+  read -p "⚠️ 检测到 $MINICONDA_DIR 已存在，是否清理重装？[y/N] " confirm
+  if [[ "$confirm" == [yY] ]]; then
+    rm -rf "$MINICONDA_DIR"
+  else
+    echo "✅ 跳过 Miniconda3 安装"
+  fi
+fi
+
+if [ ! -d "$MINICONDA_DIR" ]; then
+  MINICONDA_INSTALLER="$WORKSPACE/miniconda.sh"
+  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$MINICONDA_INSTALLER"
+  bash "$MINICONDA_INSTALLER" -b -p "$MINICONDA_DIR"
+  rm "$MINICONDA_INSTALLER"
+fi
+
+# 设置Conda环境变量
+export PATH="$MINICONDA_DIR/bin:$PATH"
+. "$MINICONDA_DIR/etc/profile.d/conda.sh"
+
+# 创建cosyvoice2环境
+echo "🐍 创建 cosyvoice2 conda 环境..."
+conda create -y -n cosyvoice2 python=3.10
+conda activate cosyvoice2
+
+# ========== 3. 克隆主项目 ==========
 echo "📥 处理 CosyVoice 主项目..."
 COSY_DIR="$WORKSPACE/CosyVoice"
 if [ -d "$COSY_DIR" ]; then
@@ -35,7 +63,7 @@ if [ ! -d "$COSY_DIR" ]; then
   git clone --branch dev/Comet --single-branch --recursive https://github.com/FunAudioLLM/CosyVoice.git "$COSY_DIR"
 fi
 
-# ========== 3. 安装 Python 依赖 ==========
+# ========== 4. 安装 Python 依赖 ==========
 echo "🐍 安装 pynini..."
 pip install Cython pynini==2.1.5
 
@@ -57,7 +85,7 @@ fi
 cd "$ASYNC_DIR"
 pip install -r requirements.txt
 
-# ========== 4. 下载模型并拷贝 ==========
+# ========== 5. 下载模型并拷贝 ==========
 echo "🎯 处理模型文件..."
 PRETRAINED_DIR="$COSY_DIR/pretrained_models/CosyVoice2-0.5B"
 MODEL_COMMIT="9bd5b08fc085bd93d3f8edb16b67295606290350"
@@ -89,7 +117,8 @@ fi
 
 # ========== 完成提示 ==========
 echo ""
-echo "✅ 安装完成！你可以运行以下命令启动服务："
-echo "cd $COSY_DIR/async_cosyvoice/runtime/async_grpc"
-echo "python3 server.py --load_jit --load_trt --fp16"
+echo "✅ 安装完成！你可以通过以下步骤启动服务："
+echo "1. 激活conda环境: conda activate cosyvoice2"
+echo "2. 进入服务目录: cd $COSY_DIR/async_cosyvoice/runtime/async_grpc"
+echo "3. 启动服务: python3 server.py --load_jit --load_trt --fp16"
 
