@@ -7,7 +7,7 @@ import uuid
 import base64
 import logging
 import argparse
-from typing import Optional, Literal, Type
+from typing import Optional, Literal, Type, AsyncGenerator, Any
 
 import torch
 import torchaudio
@@ -41,10 +41,6 @@ app.add_middleware(
     allow_headers=["*"],     # 允许所有请求头
 )
 
-# 定义支持的响应格式
-# ResponseFormatType = Literal["mp3", "opus", "wav", "pcm"]
-ResponseFormatType: Type[str] = Literal["mp3", "wav"]
-
 class VoiceUploadResponse(BaseModel):
     """音频上传响应参数"""
     uri: str = Field(...,
@@ -67,9 +63,9 @@ class SpeechRequest(BaseModel):
         ],
         description="音色选择"
     )
-    response_format: Optional[Literal["mp3", "wav"]] = Field(
+    response_format: Optional[Literal["mp3", "wav", "pcm"]] = Field(
         "mp3",
-        examples=["mp3", "wav"],
+        examples=["mp3", "wav", "pcm"],
         description="输出音频格式"
     )
     sample_rate: Optional[int] = Field(
@@ -78,7 +74,7 @@ class SpeechRequest(BaseModel):
     )
     stream: Optional[bool] = Field(
         False,
-        description="暂不支持流式返回。"
+        description="开启流式返回。"
     )
     speed: Annotated[Optional[float], Field(strict=True, ge=0.25, le=4.0)] = Field(
         1.0,
@@ -100,56 +96,47 @@ def save_voice_data(customName: str, audio_data: bytes, text: str) -> str:
     )
     return uri
 
-async def generate_audio_content(request: SpeechRequest) -> bytes:
+async def generator_wrapper(audio_data_generator: AsyncGenerator[dict, None]) -> AsyncGenerator[torch.Tensor, None]:
+    async for chunk in audio_data_generator:
+        yield chunk["tts_speech"]
+
+async def generate_audio_content(request: SpeechRequest) -> AsyncGenerator[bytes, Any] | None:
     """生成音频内容（示例实现）"""
     tts_text = request.input
     spk_id = request.voice
 
-    audio_data: torch.Tensor | None = None
+    try:
+        end_of_prompt_index = tts_text.find("<|endofprompt|>")
+        if end_of_prompt_index != -1:
+            instruct_text = tts_text[: end_of_prompt_index + len("<|endofprompt|>")]
+            tts_text = tts_text[end_of_prompt_index + len("<|endofprompt|>") :]
 
-    end_of_prompt_index = tts_text.find("<|endofprompt|>")
-    # tts_type = "instruct2"
-    if end_of_prompt_index != -1:
-        instruct_text = tts_text[:end_of_prompt_index + len("<|endofprompt|>")]
-        tts_text = tts_text[end_of_prompt_index + len("<|endofprompt|>"):]
-        try:
-            async for chunk in cosyvoice.inference_instruct2_by_spk_id(
+            audio_tensor_data_generator = generator_wrapper(cosyvoice.inference_instruct2_by_spk_id(
                 tts_text,
                 instruct_text,
                 spk_id,
                 stream=request.stream,
                 speed=request.speed,
-                text_frontend=True
-            ):
-                if audio_data is not None:
-                    audio_data = torch.concat([audio_data, chunk['tts_speech']], dim=1)
-                else:
-                    audio_data = chunk['tts_speech']
-        except Exception as e:
-            logging.error(f"Processing failed: {str(e)}", exc_info=True)
+                text_frontend=True,
+            ))
+        else:
+            audio_tensor_data_generator = generator_wrapper(cosyvoice.inference_zero_shot_by_spk_id(
+                tts_text,
+                spk_id,
+                stream=request.stream,
+                speed=request.speed,
+                text_frontend=True,
+            ))
 
-    # tts_type = "zero_shot"
-    else:
-        try:
-            async for chunk in cosyvoice.inference_zero_shot_by_spk_id(
-                    tts_text,
-                    spk_id,
-                    stream=request.stream,
-                    speed=request.speed,
-                    text_frontend=True
-            ):
-                if audio_data is not None:
-                    audio_data = torch.concat([audio_data, chunk['tts_speech']], dim=1)
-                else:
-                    audio_data = chunk['tts_speech']
-        except Exception as e:
-            logging.error(f"Processing failed: {str(e)}", exc_info=True)
-    assert audio_data is not None
-    return convert_audio_tensor_to_bytes(
-        audio_data,
-        request.response_format,
-        sample_rate=request.sample_rate
-    )
+        audio_bytes_data_generator = convert_audio_tensor_to_bytes(
+            audio_tensor_data_generator,
+            request.response_format,
+            sample_rate=request.sample_rate,
+            stream=request.stream,
+        )
+        return audio_bytes_data_generator
+    except Exception as e:
+        logging.error(f"Processing failed: {str(e)}", exc_info=True)
 
 def get_content_type(fmt: str, sample_rate: int) -> str:
     """获取对应格式的Content-Type"""
@@ -165,9 +152,6 @@ def get_content_type(fmt: str, sample_rate: int) -> str:
 async def text_to_speech(request: SpeechRequest):
     """## 文本转语音接口"""
     try:
-        # 生成音频内容
-        audio_data = await generate_audio_content(request)
-
         # 构建响应头
         content_type = get_content_type(
             request.response_format,
@@ -177,7 +161,7 @@ async def text_to_speech(request: SpeechRequest):
 
         # 返回流式响应
         return StreamingResponse(
-            content=io.BytesIO(audio_data),
+            content=await generate_audio_content(request),
             media_type=content_type,
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
