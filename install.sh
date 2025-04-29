@@ -90,6 +90,6 @@ fi
 # ========== 完成提示 ==========
 echo ""
 echo "✅ 安装完成！你可以运行以下命令启动服务："
-echo "cd $COSY_DIR/async_cosyvoice/runtime/fastapi"
+echo "cd $COSY_DIR/async_cosyvoice/runtime/async_grpc"
 echo "python3 server.py --load_jit --load_trt --fp16"
 
