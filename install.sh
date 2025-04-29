@@ -22,9 +22,13 @@ apt-get remove -y python3 python3-pip python3-dev || true
 
 # 安装指定版本的Python
 echo "📥 安装Python ${PYTHON_VERSION}..."
-apt-get install -y git unzip git-lfs sox libsox-dev build-essential python${PYTHON_VERSION} python${PYTHON_VERSION}-pip python${PYTHON_VERSION}-dev
+apt-get install -y git unzip git-lfs sox libsox-dev build-essential python${PYTHON_VERSION} python${PYTHON_VERSION}-venv
 
-# 创建软链接确保python3和pip3指向正确版本
+# 安装pip
+echo "📥 安装pip..."
+apt-get install -y python3-pip
+
+# 确保使用正确的Python版本
 update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
 update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip${PYTHON_VERSION} 1
 
