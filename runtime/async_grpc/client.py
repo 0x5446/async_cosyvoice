@@ -171,7 +171,8 @@ def multiprocess_main(args):
     all_text = []
     with open(args.input_file, 'r') as f:
         for line in f:
-            all_text.append(line.strip())
+            line = line.strip()
+            all_text.append(line) if line else None
 
     start_time = time.monotonic()
     os.makedirs(args.output_path, exist_ok=True)
@@ -231,5 +232,5 @@ if __name__ == "__main__":
         else:
             asyncio.run(main(args))
 
-    # python client.py --mode zero_shot_by_spk_id --spk_id 001 --stream_input --tts_text 你好，请问有什么可以帮您的吗？ --format "" --stream
+    # python client.py --mode zero_shot_by_spk_id --spk_id 001 --stream_input --tts_text 你好，请问有什么可以帮您的吗？ --stream
     # python client.py --mode zero_shot_by_spk_id --spk_id 001 --input_file text.txt --max_conc 10 --output_path output
