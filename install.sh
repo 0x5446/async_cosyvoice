@@ -3,7 +3,6 @@
 set -e  # 出错立即退出
 
 WORKSPACE=$1
-PYTHON_VERSION="3.10"  # 指定Python版本
 
 if [ -z "$WORKSPACE" ]; then
   echo "❌ 请传入工作目录作为第一个参数，例如：./install.sh /path/to/workspace"
@@ -15,22 +14,7 @@ mkdir -p "$WORKSPACE"
 # ========== 1. 安装系统依赖 ==========
 echo "📦 安装系统依赖..."
 apt-get update -y
-
-# 卸载已有Python版本
-echo "🔄 卸载已有Python版本..."
-apt-get remove -y python3 python3-pip python3-dev || true
-
-# 安装指定版本的Python
-echo "📥 安装Python ${PYTHON_VERSION}..."
-apt-get install -y git unzip git-lfs sox libsox-dev build-essential python${PYTHON_VERSION} python${PYTHON_VERSION}-venv
-
-# 安装pip
-echo "📥 安装pip..."
-apt-get install -y python3-pip
-
-# 确保使用正确的Python版本
-update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
-update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip${PYTHON_VERSION} 1
+apt-get install -y git unzip git-lfs sox libsox-dev build-essential python3-pip
 
 # 初始化 git lfs
 git lfs install || true
