@@ -44,7 +44,14 @@ export PATH="$MINICONDA_DIR/bin:$PATH"
 
 # 检查并创建cosyvoice2环境
 if conda info --envs | grep -q "cosyvoice2"; then
-  echo "✅ conda环境 'cosyvoice2' 已存在，跳过创建"
+  read -p "⚠️ 检测到conda环境 'cosyvoice2' 已存在，是否重新创建？[y/N] " confirm
+  if [[ "$confirm" == [yY] ]]; then
+    echo "🔄 正在删除并重新创建cosyvoice2环境..."
+    conda remove -y --name cosyvoice2 --all
+    conda create -y -n cosyvoice2 python=3.10
+  else
+    echo "✅ 使用现有的cosyvoice2环境"
+  fi
 else
   echo "🐍 创建 cosyvoice2 conda 环境..."
   conda create -y -n cosyvoice2 python=3.10
@@ -104,31 +111,9 @@ fi
 cd "$ASYNC_DIR"
 
 # 从 requirements.txt 文件安装依赖
-echo "🐍 检查并安装依赖..."
+echo "🐍 安装 Python 依赖..."
 if [ -f "requirements.txt" ]; then
-  # 为了确保依赖正确安装，我们将直接使用pip安装requirements.txt
-  echo "🐍 使用pip安装requirements.txt..."
   pip install -r requirements.txt
-  
-  # 但是我们仍然输出已安装的包，以便调试
-  echo "📋 已安装的包信息："
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    # 跳过空行、注释和pip选项行
-    if [[ -z "$line" || "$line" == \#* || "$line" == --* ]]; then
-      continue
-    fi
-    
-    # 提取包名（移除版本信息）
-    package=$(echo "$line" | cut -d'=' -f1 | cut -d'>' -f1 | cut -d'<' -f1 | tr -d ' ')
-    import_name=$(echo "$package" | tr '-' '_')
-    
-    # 检查包是否已安装
-    if python -c "import $import_name" &>/dev/null; then
-      echo "✅ $package 已安装"
-    else
-      echo "⚠️ $package 可能未正确安装"
-    fi
-  done < "requirements.txt"
 else
   echo "⚠️ requirements.txt 文件不存在"
   exit 1
