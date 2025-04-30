@@ -58,7 +58,17 @@ else
 fi
 
 # 激活cosyvoice2环境
+echo "🐍 正在激活 cosyvoice2 环境..."
 conda activate cosyvoice2
+
+# 检查环境是否成功激活
+if [[ "$CONDA_DEFAULT_ENV" == "cosyvoice2" ]]; then
+  echo "✅ 已成功激活 cosyvoice2 环境"
+else
+  echo "❌ 环境激活失败，当前环境为: $CONDA_DEFAULT_ENV"
+  echo "请尝试手动激活环境: conda activate cosyvoice2"
+  exit 1
+fi
 
 # ========== 3. 克隆主项目 ==========
 echo "📥 处理 CosyVoice 主项目..."
