@@ -19,26 +19,51 @@ apt-get install -y git unzip git-lfs sox libsox-dev build-essential wget
 # 初始化 git lfs
 git lfs install || true
 
-# ========== 2. 安装 Miniconda3 ==========
-echo "📦 安装 Miniconda3..."
-MINICONDA_DIR="$WORKSPACE/miniconda3"
-if [ -d "$MINICONDA_DIR" ]; then
-  read -p "⚠️ 检测到 $MINICONDA_DIR 已存在，是否清理重装？[y/N] " confirm
-  if [[ "$confirm" == [yY] ]]; then
-    rm -rf "$MINICONDA_DIR"
+# ========== 2. 安装/使用 Miniconda3 ==========
+echo "🔍 检查是否已安装 Conda（Miniconda/Anaconda）..."
+
+# 检查系统中是否已存在conda
+if command -v conda &> /dev/null; then
+  EXISTING_CONDA_PATH=$(conda info --base)
+  echo "✅ 检测到系统中已安装Conda: $EXISTING_CONDA_PATH"
+  read -p "⚠️ 是否使用已有的Conda安装？[Y/n] " use_existing
+  
+  if [[ "$use_existing" == [nN] ]]; then
+    echo "📦 将安装新的Miniconda到指定位置..."
+    INSTALL_NEW_CONDA=true
   else
-    echo "✅ 跳过 Miniconda3 安装"
+    echo "✅ 使用已存在的Conda安装"
+    MINICONDA_DIR="$EXISTING_CONDA_PATH"
+    INSTALL_NEW_CONDA=false
+  fi
+else
+  echo "📦 未检测到Conda安装，将安装新的Miniconda..."
+  INSTALL_NEW_CONDA=true
+fi
+
+if [ "$INSTALL_NEW_CONDA" = true ]; then
+  MINICONDA_DIR="$WORKSPACE/miniconda3"
+  echo "📦 安装 Miniconda3 到 $MINICONDA_DIR..."
+  
+  if [ -d "$MINICONDA_DIR" ]; then
+    read -p "⚠️ 检测到 $MINICONDA_DIR 已存在，是否清理重装？[y/N] " confirm
+    if [[ "$confirm" == [yY] ]]; then
+      rm -rf "$MINICONDA_DIR"
+    else
+      echo "✅ 跳过 Miniconda3 安装"
+    fi
+  fi
+
+  if [ ! -d "$MINICONDA_DIR" ]; then
+    MINICONDA_INSTALLER="$WORKSPACE/miniconda.sh"
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$MINICONDA_INSTALLER"
+    bash "$MINICONDA_INSTALLER" -b -p "$MINICONDA_DIR"
+    rm "$MINICONDA_INSTALLER"
   fi
 fi
 
-if [ ! -d "$MINICONDA_DIR" ]; then
-  MINICONDA_INSTALLER="$WORKSPACE/miniconda.sh"
-  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$MINICONDA_INSTALLER"
-  bash "$MINICONDA_INSTALLER" -b -p "$MINICONDA_DIR"
-  rm "$MINICONDA_INSTALLER"
-fi
-
 # 设置Conda环境变量
+echo "📦 配置Conda环境..."
 export PATH="$MINICONDA_DIR/bin:$PATH"
 . "$MINICONDA_DIR/etc/profile.d/conda.sh"
 
@@ -90,7 +115,7 @@ fi
 # 检查 Cython 是否已安装
 if ! python -c "import Cython" &>/dev/null; then
   echo "🐍 安装 Cython..."
-  pip install Cython
+  pip install --upgrade Cython
 else
   echo "✅ Cython 已安装，跳过"
 fi
@@ -98,7 +123,7 @@ fi
 # 检查 pynini 是否已安装
 if ! python -c "import pynini" &>/dev/null; then
   echo "🐍 安装 pynini..."
-  pip install pynini==2.1.5
+  pip install --upgrade pynini==2.1.5
 else
   echo "✅ pynini 已安装，跳过"
 fi
@@ -123,7 +148,8 @@ cd "$ASYNC_DIR"
 # 从 requirements.txt 文件安装依赖
 echo "🐍 安装 Python 依赖..."
 if [ -f "requirements.txt" ]; then
-  pip install -r requirements.txt
+  # 使用 --upgrade 参数，仅在需要时更新包，避免重复下载
+  pip install --upgrade -r requirements.txt
 else
   echo "⚠️ requirements.txt 文件不存在"
   exit 1
@@ -132,7 +158,7 @@ fi
 # 检查 modelscope 是否已安装
 if ! python -c "import modelscope" &>/dev/null; then
   echo "🐍 安装 modelscope CLI..."
-  pip install modelscope
+  pip install --upgrade modelscope
 else
   echo "✅ modelscope 已安装，跳过"
 fi
