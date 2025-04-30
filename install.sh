@@ -166,8 +166,8 @@ fi
 # ========== 5. 下载模型并拷贝 ==========
 echo "🎯 处理模型文件..."
 PRETRAINED_DIR="$COSY_DIR/pretrained_models/CosyVoice2-0.5B"
+MODEL_REPO="https://www.modelscope.cn/iic/CosyVoice2-0.5B.git"
 MODEL_COMMIT="9bd5b08fc085bd93d3f8edb16b67295606290350"
-MODEL_ID="iic/CosyVoice2-0.5B"
 
 if [ -d "$PRETRAINED_DIR" ]; then
   read -p "⚠️ 模型目录已存在，是否清理并重新下载？[y/N] " confirm
@@ -179,29 +179,32 @@ if [ -d "$PRETRAINED_DIR" ]; then
 fi
 
 if [ ! -d "$PRETRAINED_DIR" ]; then
-  echo "📥 使用ModelScope CLI下载模型并切换到指定commit: $MODEL_COMMIT"
+  echo "📥 使用Git LFS下载模型并切换到指定commit: $MODEL_COMMIT"
   mkdir -p "$PRETRAINED_DIR"
   
-  # 使用modelscope CLI工具下载模型，最多重试3次
-  MAX_RETRIES=3
-  retry_count=0
-  success=false
-
-  while [ $retry_count -lt $MAX_RETRIES ] && [ "$success" != "true" ]; do
-    if modelscope download --model $MODEL_ID --revision $MODEL_COMMIT --local_dir "$PRETRAINED_DIR"; then
-      success=true
-      echo "✅ 模型下载成功！"
-    else
-      retry_count=$((retry_count+1))
-      if [ $retry_count -lt $MAX_RETRIES ]; then
-        echo "⚠️ 下载失败，等待10秒后进行第 $retry_count 次重试..."
-        sleep 10
-      else
-        echo "❌ 多次尝试后仍然下载失败，请检查网络连接或手动下载模型。"
-        exit 1
-      fi
-    fi
-  done
+  # 执行内存优化: 配置Git LFS使用更少的内存
+  git config --global lfs.concurrenttransfers 1
+  git config --global lfs.fetchrecentrefsdays 1
+  git config --global lfs.fetchrecentcommitsdays 1
+  
+  # 直接克隆到目标目录
+  echo "📥 步骤1: 浅克隆仓库..."
+  if git clone --depth 1 "$MODEL_REPO" "$PRETRAINED_DIR"; then
+    cd "$PRETRAINED_DIR"
+    
+    echo "📥 步骤2: checkout指定提交..."
+    git checkout "$MODEL_COMMIT"
+    
+    echo "📥 步骤3: 拉取LFS文件..."
+    git lfs pull
+    
+    cd - > /dev/null
+    
+    echo "✅ 模型下载和安装成功！"
+  else
+    echo "❌ 克隆失败，请检查网络连接或手动下载模型。"
+    exit 1
+  fi
   
   # 使用ASYNC_DIR中的文件覆盖模型目录
   if [ -d "$ASYNC_DIR/CosyVoice2-0.5B" ]; then
