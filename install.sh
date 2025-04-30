@@ -106,10 +106,15 @@ cd "$ASYNC_DIR"
 # 从 requirements.txt 文件安装依赖
 echo "🐍 检查并安装依赖..."
 if [ -f "requirements.txt" ]; then
-  # 读取requirements.txt并安装缺失的包
+  # 为了确保依赖正确安装，我们将直接使用pip安装requirements.txt
+  echo "🐍 使用pip安装requirements.txt..."
+  pip install -r requirements.txt
+  
+  # 但是我们仍然输出已安装的包，以便调试
+  echo "📋 已安装的包信息："
   while IFS= read -r line || [[ -n "$line" ]]; do
-    # 跳过空行和注释
-    if [[ -z "$line" || "$line" == \#* ]]; then
+    # 跳过空行、注释和pip选项行
+    if [[ -z "$line" || "$line" == \#* || "$line" == --* ]]; then
       continue
     fi
     
@@ -118,11 +123,10 @@ if [ -f "requirements.txt" ]; then
     import_name=$(echo "$package" | tr '-' '_')
     
     # 检查包是否已安装
-    if ! python -c "import $import_name" &>/dev/null; then
-      echo "🐍 安装 $line..."
-      pip install "$line"
+    if python -c "import $import_name" &>/dev/null; then
+      echo "✅ $package 已安装"
     else
-      echo "✅ $package 已安装，跳过"
+      echo "⚠️ $package 可能未正确安装"
     fi
   done < "requirements.txt"
 else
