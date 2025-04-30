@@ -235,5 +235,6 @@ echo ""
 echo "✅ 安装完成！你可以通过以下步骤启动服务："
 echo "1. 激活conda环境: conda activate cosyvoice2"
 echo "2. 进入服务目录: cd $COSY_DIR/async_cosyvoice/runtime/async_grpc"
-echo "3. 启动服务: python3 server.py --load_jit --load_trt --fp16"
+echo "3. 生成gRPC Proto文件: python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cosyvoice.proto"
+echo "4. 启动服务: python3 server.py --load_jit --load_trt --fp16"
 
