@@ -64,8 +64,21 @@ if [ ! -d "$COSY_DIR" ]; then
 fi
 
 # ========== 4. 安装 Python 依赖 ==========
-echo "🐍 安装 pynini..."
-pip install Cython pynini==2.1.5
+# 检查 Cython 是否已安装
+if ! python -c "import Cython" &>/dev/null; then
+  echo "🐍 安装 Cython..."
+  pip install Cython
+else
+  echo "✅ Cython 已安装，跳过"
+fi
+
+# 检查 pynini 是否已安装
+if ! python -c "import pynini" &>/dev/null; then
+  echo "🐍 安装 pynini..."
+  pip install pynini==2.1.5
+else
+  echo "✅ pynini 已安装，跳过"
+fi
 
 echo "📥 处理 async_cosyvoice 子项目..."
 ASYNC_DIR="$COSY_DIR/async_cosyvoice"
@@ -83,10 +96,41 @@ if [ ! -d "$ASYNC_DIR" ]; then
 fi
 
 cd "$ASYNC_DIR"
-pip install -r requirements.txt
 
-# 确保安装了modelscope CLI
-pip install modelscope
+# 从 requirements.txt 文件安装依赖
+echo "🐍 检查并安装依赖..."
+if [ -f "requirements.txt" ]; then
+  # 读取requirements.txt并安装缺失的包
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # 跳过空行和注释
+    if [[ -z "$line" || "$line" == \#* ]]; then
+      continue
+    fi
+    
+    # 提取包名（移除版本信息）
+    package=$(echo "$line" | cut -d'=' -f1 | cut -d'>' -f1 | cut -d'<' -f1 | tr -d ' ')
+    import_name=$(echo "$package" | tr '-' '_')
+    
+    # 检查包是否已安装
+    if ! python -c "import $import_name" &>/dev/null; then
+      echo "🐍 安装 $line..."
+      pip install "$line"
+    else
+      echo "✅ $package 已安装，跳过"
+    fi
+  done < "requirements.txt"
+else
+  echo "⚠️ requirements.txt 文件不存在"
+  exit 1
+fi
+
+# 检查 modelscope 是否已安装
+if ! python -c "import modelscope" &>/dev/null; then
+  echo "🐍 安装 modelscope CLI..."
+  pip install modelscope
+else
+  echo "✅ modelscope 已安装，跳过"
+fi
 
 # ========== 5. 下载模型并拷贝 ==========
 echo "🎯 处理模型文件..."
