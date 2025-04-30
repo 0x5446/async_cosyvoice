@@ -187,31 +187,19 @@ if [ ! -d "$PRETRAINED_DIR" ]; then
   git config --global lfs.fetchrecentrefsdays 1
   git config --global lfs.fetchrecentcommitsdays 1
   
-  # 更保守的GIT参数
-  export GIT_TRACE_PACKET=0
-  export GIT_TRACE=0
-  export GIT_CURL_VERBOSE=0
+  # 克隆仓库但不下载LFS文件，更简单的克隆策略
+  echo "📥 步骤1: 克隆仓库(跳过LFS下载)..."
+  GIT_LFS_SKIP_SMUDGE=1 git clone "$MODEL_REPO" "$PRETRAINED_DIR"
   
-  # 创建最小化bare克隆
-  echo "📥 步骤1: 创建最小化bare克隆..."
-  TMP_BARE_REPO="$WORKSPACE/bare_repo_tmp.git"
-  rm -rf "$TMP_BARE_REPO"
-  
-  if git clone --bare --filter=blob:none "$MODEL_REPO" "$TMP_BARE_REPO"; then
+  if [ $? -eq 0 ]; then
     cd "$PRETRAINED_DIR"
     
-    echo "📥 步骤2: 从bare克隆创建工作目录..."
-    git init
-    git remote add origin "$TMP_BARE_REPO"
+    echo "📥 步骤2: 切换到指定commit: $MODEL_COMMIT"
+    git checkout "$MODEL_COMMIT"
     
-    echo "📥 步骤3: 只拉取所需commit..."
-    git fetch --depth=1 origin "$MODEL_COMMIT"
-    git checkout -f FETCH_HEAD
-    
-    echo "📥 步骤4: 手动拉取LFS文件(按文件分批拉取)..."
+    echo "📥 步骤3: 分批拉取LFS文件..."
     # 查找所有LFS文件
     echo "正在识别LFS文件..."
-    # 使用git lfs ls-files命令获取所有LFS管理的文件
     LFS_FILES=$(git lfs ls-files -n | tr '\n' ' ')
     echo "找到以下LFS文件: $LFS_FILES"
     
@@ -225,14 +213,11 @@ if [ ! -d "$PRETRAINED_DIR" ]; then
       sleep 2  # 短暂等待以释放内存
     done
     
-    # 清理临时仓库
-    echo "📥 步骤5: 清理临时bare仓库..."
-    rm -rf "$TMP_BARE_REPO"
+    cd - > /dev/null
     
     echo "✅ 模型下载和安装成功！"
   else
     echo "❌ 克隆失败，请检查网络连接或手动下载模型。"
-    rm -rf "$TMP_BARE_REPO"
     exit 1
   fi
   
