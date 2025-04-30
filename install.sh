@@ -42,9 +42,15 @@ fi
 export PATH="$MINICONDA_DIR/bin:$PATH"
 . "$MINICONDA_DIR/etc/profile.d/conda.sh"
 
-# 创建cosyvoice2环境
-echo "🐍 创建 cosyvoice2 conda 环境..."
-conda create -y -n cosyvoice2 python=3.10
+# 检查并创建cosyvoice2环境
+if conda info --envs | grep -q "cosyvoice2"; then
+  echo "✅ conda环境 'cosyvoice2' 已存在，跳过创建"
+else
+  echo "🐍 创建 cosyvoice2 conda 环境..."
+  conda create -y -n cosyvoice2 python=3.10
+fi
+
+# 激活cosyvoice2环境
 conda activate cosyvoice2
 
 # ========== 3. 克隆主项目 ==========
