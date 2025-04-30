@@ -188,7 +188,7 @@ if [ ! -d "$PRETRAINED_DIR" ]; then
   success=false
 
   while [ $retry_count -lt $MAX_RETRIES ] && [ "$success" != "true" ]; do
-    if modelscope download --model $MODEL_ID --revision $MODEL_COMMIT --target-dir "$PRETRAINED_DIR"; then
+    if modelscope download --model $MODEL_ID --revision $MODEL_COMMIT --local_dir "$PRETRAINED_DIR"; then
       success=true
       echo "✅ 模型下载成功！"
     else
